@@ -1,3 +1,4 @@
 Bundle-Name: Liferay Flickr Item Selector Web
 Bundle-SymbolicName: com.liferay.flickr.item.selector.web
 Bundle-Version: 1.0.0
+JS-Config: /META-INF/resources/js/config.js

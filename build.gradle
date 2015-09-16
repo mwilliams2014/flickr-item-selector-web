@@ -1,0 +1,10 @@
+dependencies {
+	compile group: "com.flickr4java", name: "flickr4java", version: "2.13"
+	compile group: "org.osgi", name: "org.osgi.compendium", version: "5.0.0"
+	compile project(":apps:item-selector:item-selector-api")
+	compile project(":apps:item-selector:item-selector-criteria-api")
+}
+
+liferay {
+	deployDir = file("${liferayHome}/osgi/modules")
+}

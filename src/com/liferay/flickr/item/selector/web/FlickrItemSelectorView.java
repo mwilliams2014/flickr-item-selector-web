@@ -14,6 +14,8 @@
 
 package com.liferay.flickr.item.selector.web;
 
+import aQute.bnd.annotation.metatype.Configurable;
+
 import com.flickr4java.flickr.Flickr;
 import com.flickr4java.flickr.FlickrException;
 import com.flickr4java.flickr.REST;
@@ -26,6 +28,7 @@ import com.flickr4java.flickr.photos.PhotosInterface;
 import com.flickr4java.flickr.photos.SearchParameters;
 import com.flickr4java.flickr.photos.Size;
 
+import com.liferay.flickr.item.selector.web.configuration.FlickrItemSelectorConfiguration;
 import com.liferay.item.selector.ItemSelectorReturnType;
 import com.liferay.item.selector.ItemSelectorView;
 import com.liferay.item.selector.criteria.URLItemSelectorReturnType;
@@ -51,6 +54,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.ResourceBundle;
 import java.util.Set;
 
@@ -62,13 +66,16 @@ import javax.servlet.ServletException;
 import javax.servlet.ServletRequest;
 import javax.servlet.ServletResponse;
 
+import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.Modified;
 import org.osgi.service.component.annotations.Reference;
 
 /**
  * @author Sergio González
  */
 @Component(
+	configurationPid = "com.liferay.flickr.item.selector.web.configuration.FlickrItemSelectorConfiguration",
 	immediate = true, service = ItemSelectorView.class
 )
 public class FlickrItemSelectorView
@@ -100,6 +107,14 @@ public class FlickrItemSelectorView
 
 	@Override
 	public boolean isVisible(ThemeDisplay themeDisplay) {
+		if (Validator.isNull(_flickrItemSelectorConfiguration.apiKey()) ||
+			Validator.isNull(_flickrItemSelectorConfiguration.sharedSecret())) {
+
+			_log.error("Please configure Flickr Api Key and Shared Secret");
+
+			return false;
+		}
+
 		return true;
 	}
 
@@ -113,10 +128,9 @@ public class FlickrItemSelectorView
 		ThemeDisplay themeDisplay = (ThemeDisplay)request.getAttribute(
 			WebKeys.THEME_DISPLAY);
 
-		String apiKey = "";
-		String sharedSecret = "";
-
-		Flickr flickr = new Flickr(apiKey, sharedSecret, new REST());
+		Flickr flickr = new Flickr(
+			_flickrItemSelectorConfiguration.apiKey(),
+			_flickrItemSelectorConfiguration.sharedSecret(), new REST());
 
 		List<FlickrPhoto> flickrPhotos = new ArrayList<>();
 
@@ -216,6 +230,13 @@ public class FlickrItemSelectorView
 		_servletContext = servletContext;
 	}
 
+	@Activate
+	@Modified
+	protected void activate(Map<String, Object> properties) {
+		_flickrItemSelectorConfiguration = Configurable.createConfigurable(
+			FlickrItemSelectorConfiguration.class, properties);
+	}
+
 	protected String getLanguageKey(Locale locale, String key) {
 		ResourceBundle resourceBundle = ResourceBundleUtil.getBundle(
 			"content/Language", locale, getClass());
@@ -252,6 +273,8 @@ public class FlickrItemSelectorView
 					new URLItemSelectorReturnType()
 				}));
 
+	private volatile FlickrItemSelectorConfiguration
+		_flickrItemSelectorConfiguration;
 	private ServletContext _servletContext;
 
 }

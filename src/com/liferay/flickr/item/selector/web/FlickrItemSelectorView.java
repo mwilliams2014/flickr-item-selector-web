@@ -128,13 +128,7 @@ public class FlickrItemSelectorView
 		ThemeDisplay themeDisplay = (ThemeDisplay)request.getAttribute(
 			WebKeys.THEME_DISPLAY);
 
-		Flickr flickr = new Flickr(
-			_flickrItemSelectorConfiguration.apiKey(),
-			_flickrItemSelectorConfiguration.sharedSecret(), new REST());
-
 		List<FlickrPhoto> flickrPhotos = new ArrayList<>();
-
-		PhotosInterface photosInterface = flickr.getPhotosInterface();
 
 		PhotoList<Photo> photoList = null;
 
@@ -149,62 +143,23 @@ public class FlickrItemSelectorView
 
 		extras.add(Extras.OWNER_NAME);
 
+		Flickr flickr = new Flickr(
+			_flickrItemSelectorConfiguration.apiKey(),
+			_flickrItemSelectorConfiguration.sharedSecret(), new REST());
+
 		try {
 			if (search) {
-				SearchParameters searchParameters = new SearchParameters();
+				String keywords = GetterUtil.getString(
+					request.getParameter("keywords"));
 
-				searchParameters.setExtras(extras);
-				searchParameters.setText(
-					GetterUtil.getString(request.getParameter("keywords")));
-
-				photoList = photosInterface.search(
-					searchParameters, delta, cur);
+				photoList = getSearchPhotoList(flickr, keywords, delta, cur);
 			}
 			else {
-				InterestingnessInterface interestingnessInterface =
-					flickr.getInterestingnessInterface();
-
-				Calendar date = new GregorianCalendar();
-
-				date.add(Calendar.DATE, -1);
-
-				photoList = interestingnessInterface.getList(
-					date.getTime(), extras, delta, cur);
+				photoList = getInterestingPhotoList(flickr, delta, cur);
 			}
 
-			for (Photo photo : photoList) {
-				String photoURL = getPhotoURL(
-					photosInterface.getSizes(photo.getId()));
-
-				if (Validator.isNull(photoURL)) {
-					continue;
-				}
-
-				String photoTitle = photo.getTitle();
-
-				if (Validator.isNull(photoTitle)) {
-					photoTitle = getLanguageKey(
-						themeDisplay.getLocale(), "untitled");
-				}
-
-				String userName = null;
-
-				User owner = photo.getOwner();
-
-				if (owner != null) {
-					userName = owner.getUsername();
-				}
-
-				if (Validator.isNull(userName)) {
-					userName = getLanguageKey(
-						themeDisplay.getLocale(), "anonymous");
-				}
-
-				FlickrPhoto flickrPhoto = new FlickrPhoto(
-					photoTitle, photoURL, userName, photo.getSquareLargeUrl());
-
-				flickrPhotos.add(flickrPhoto);
-			}
+			populateFlickrPhotos(
+				flickr, photoList, themeDisplay.getLocale(), flickrPhotos);
 		}
 		catch (FlickrException e) {
 			e.printStackTrace();
@@ -237,6 +192,25 @@ public class FlickrItemSelectorView
 			FlickrItemSelectorConfiguration.class, properties);
 	}
 
+	protected PhotoList<Photo> getInterestingPhotoList(
+			Flickr flickr, int delta, int cur)
+		throws FlickrException {
+
+		InterestingnessInterface interestingnessInterface =
+			flickr.getInterestingnessInterface();
+
+		Calendar date = new GregorianCalendar();
+
+		date.add(Calendar.DATE, -1);
+
+		Set<String> extras = new HashSet<>();
+
+		extras.add(Extras.OWNER_NAME);
+
+		return interestingnessInterface.getList(
+			date.getTime(), extras, delta, cur);
+	}
+
 	protected String getLanguageKey(Locale locale, String key) {
 		ResourceBundle resourceBundle = ResourceBundleUtil.getBundle(
 			"content/Language", locale, getClass());
@@ -245,9 +219,6 @@ public class FlickrItemSelectorView
 	}
 
 	protected String getPhotoURL(Collection<Size> sizes) {
-		int height = 700;
-		int width = 700;
-
 		List<Size> sizesList = new ArrayList<>(sizes);
 
 		Iterator<Size> sizeIterator = ListUtil.reverseIterator(sizesList);
@@ -255,12 +226,98 @@ public class FlickrItemSelectorView
 		while (sizeIterator.hasNext()) {
 			Size size = sizeIterator.next();
 
-			if ((size.getHeight() > height) && (size.getWidth() > width)) {
+			if (isValidSize(size.getHeight(), size.getWidth())) {
 				return size.getSource();
 			}
 		}
 
 		return null;
+	}
+
+	protected PhotoList<Photo> getSearchPhotoList(
+			Flickr flickr, String keywords, int delta, int cur)
+		throws FlickrException {
+
+		PhotosInterface photosInterface = flickr.getPhotosInterface();
+
+		SearchParameters searchParameters = new SearchParameters();
+
+		Set<String> extras = new HashSet<>();
+
+		extras.add(Extras.OWNER_NAME);
+
+		searchParameters.setExtras(extras);
+		searchParameters.setText(keywords);
+
+		return photosInterface.search(searchParameters, delta, cur);
+	}
+
+	protected boolean isValidSize(int height, int width) {
+		if (_flickrItemSelectorConfiguration.minHeight() > 0) {
+			if (height < _flickrItemSelectorConfiguration.minHeight()) {
+				return false;
+			}
+		}
+
+		if (_flickrItemSelectorConfiguration.maxHeight() > 0) {
+			if (height > _flickrItemSelectorConfiguration.maxHeight()) {
+				return false;
+			}
+		}
+
+		if (_flickrItemSelectorConfiguration.minWidth() > 0) {
+			if (width < _flickrItemSelectorConfiguration.minWidth()) {
+				return false;
+			}
+		}
+
+		if (_flickrItemSelectorConfiguration.maxWidth() > 0) {
+			if (width > _flickrItemSelectorConfiguration.maxWidth()) {
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	protected void populateFlickrPhotos(
+			Flickr flickr, PhotoList<Photo> photoList, Locale locale,
+			List<FlickrPhoto> flickrPhotos)
+		throws FlickrException {
+
+		PhotosInterface photosInterface = flickr.getPhotosInterface();
+
+		for (Photo photo : photoList) {
+			String photoURL = getPhotoURL(
+				photosInterface.getSizes(photo.getId()));
+
+			if (Validator.isNull(photoURL)) {
+				continue;
+			}
+
+			String photoTitle = photo.getTitle();
+
+			if (Validator.isNull(photoTitle)) {
+				photoTitle = getLanguageKey(locale, "untitled");
+			}
+
+			String userName = null;
+
+			User owner = photo.getOwner();
+
+			if (owner != null) {
+				userName = owner.getUsername();
+			}
+
+			if (Validator.isNull(userName)) {
+				userName = getLanguageKey(locale, "anonymous");
+			}
+
+			FlickrPhoto flickrPhoto = new FlickrPhoto(
+				photoTitle, photoURL, userName, photo.getSquareLargeUrl());
+
+			flickrPhotos.add(flickrPhoto);
+		}
 	}
 
 	private static final Log _log = LogFactoryUtil.getLog(

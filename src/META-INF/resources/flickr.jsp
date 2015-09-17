@@ -25,7 +25,7 @@ String itemSelectedEventName = (String)request.getAttribute("itemSelectedEventNa
 <div id="<portlet:namespace />flickerImageSelectorWrapper">
 
 	<liferay-ui:search-container
-		emptyResultsMessage="no-groups-were-found"
+		emptyResultsMessage="there-are-no-flickr-images"
 		iteratorURL="<%= portletURL %>"
 		total="<%= GetterUtil.getInteger(request.getAttribute("total")) %>"
 	>

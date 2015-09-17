@@ -165,6 +165,7 @@ public class FlickrItemSelectorView
 			e.printStackTrace();
 		}
 
+		request.setAttribute("total", photoList.getTotal());
 		request.setAttribute("flickrPhotos", flickrPhotos);
 		request.setAttribute("portletURL", portletURL);
 		request.setAttribute("itemSelectedEventName", itemSelectedEventName);

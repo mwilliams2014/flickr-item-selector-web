@@ -27,7 +27,7 @@ String itemSelectedEventName = (String)request.getAttribute("itemSelectedEventNa
 	<liferay-ui:search-container
 		emptyResultsMessage="no-groups-were-found"
 		iteratorURL="<%= portletURL %>"
-		total="<%= 60 %>"
+		total="<%= GetterUtil.getInteger(request.getAttribute("total")) %>"
 	>
 		<liferay-ui:search-container-results
 			results="<%= flickrPhotos %>"
